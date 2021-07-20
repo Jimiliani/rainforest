@@ -17,6 +17,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'user_backends.apps.UserBackendsConfig',
 ]
 
 MIDDLEWARE = [
@@ -65,6 +66,8 @@ DATABASES = {
         'PORT': DB_PORT,
     }
 }
+
+AUTH_USER_MODEL = 'user_backends.User'
 
 AUTH_PASSWORD_VALIDATORS = [
     {
