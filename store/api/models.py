@@ -4,6 +4,7 @@ from rest_framework.exceptions import ValidationError
 
 from api.validators import validate_min_amount_of_items_in_orders
 from user_backends import models as user_models
+from django.utils.timezone import now
 
 
 class Item(models.Model):
@@ -22,6 +23,7 @@ class Order(models.Model):
     items = models.ManyToManyField(Item, blank=True, through="ItemInOrderRelationship", related_name='orders')
     paid = models.BooleanField(default=False)
     sold_for = models.PositiveIntegerField(null=True)
+    sold_at = models.DateField(null=True)
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         if not self.pk and Order.objects.filter(paid=False, owner=self.owner).exists():
@@ -35,6 +37,7 @@ class Order(models.Model):
                 user.balance -= total_price
                 user.save()
                 self.sold_for = total_price
+                self.sold_at = now
                 self.paid = True
                 self.save()
         else:
