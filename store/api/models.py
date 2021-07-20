@@ -1,5 +1,5 @@
 from django.db import models, transaction
-from django.db.models import Sum
+from django.db.models import Sum, F, OuterRef
 from rest_framework.exceptions import ValidationError
 
 from api.validators import validate_min_amount_of_items_in_orders
@@ -11,6 +11,7 @@ class Item(models.Model):
     prime_cost = models.PositiveIntegerField(default=0)
     cost = models.PositiveIntegerField(default=0)
     amount = models.PositiveIntegerField(default=0)
+    returned_amount = models.PositiveSmallIntegerField(default=0)
 
     def __str__(self):
         return self.name
@@ -18,7 +19,7 @@ class Item(models.Model):
 
 class Order(models.Model):
     owner = models.ForeignKey(user_models.User, on_delete=models.CASCADE)
-    items = models.ManyToManyField(Item, null=True, through="ItemInOrderRelationship", related_name='orders')
+    items = models.ManyToManyField(Item, blank=True, through="ItemInOrderRelationship", related_name='orders')
     paid = models.BooleanField(default=False)
     sold_for = models.PositiveIntegerField(null=True)
 
@@ -37,9 +38,13 @@ class Order(models.Model):
     def return_order(self, user):
         if not self.paid:
             raise ValidationError(detail="Order is not paid yet.")
+        item_ids = self.items.values_list('id', flat=True)
         with transaction.atomic():
             user.balance += self.sold_for
             user.save()
+            Item.objects.filter(id__in=item_ids).update(
+                returned_amount=F('returned_amount') + self.items_in_order.filter(order=self, item_id=OuterRef('id'))
+            )
             self.delete()
 
     def __str__(self):

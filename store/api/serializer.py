@@ -75,3 +75,14 @@ class OrderSerializer(serializers.ModelSerializer):
         items_ = [api_models.ItemInOrderRelationship(**item, order=instance) for item in items]
         api_models.ItemInOrderRelationship.objects.bulk_create(items_)
         return instance
+
+
+class ItemStatisticsSerializer(serializers.ModelSerializer):
+    returned_amount = serializers.IntegerField()
+    proceed = serializers.IntegerField()
+    profit = serializers.IntegerField()
+    sold_count = serializers.IntegerField()
+
+    class Meta:
+        model = api_models.Item
+        fields = ['id', 'name', 'returned_amount', 'proceed', 'profit', 'sold_count']
