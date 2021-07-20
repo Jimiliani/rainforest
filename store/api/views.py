@@ -1,5 +1,5 @@
 from django import forms
-from django.db.models import F, Sum, Prefetch, Count
+from django.db.models import F, Sum, Prefetch, Count, Q
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, mixins, pagination, status
 from rest_framework.decorators import action
@@ -28,13 +28,13 @@ class ItemViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if self.action == 'statistics':
             item_order_relationship = api_models.ItemInOrderRelationship.objects.filter(order__paid=True)
-            return api_models.Item.objects.prefetch_related(
-                Prefetch('orders_with_item', queryset=item_order_relationship)
-            ).annotate(
-                proceed=F('cost') * Sum('orders_with_item__amount', filter=item_order_relationship, output_field=django_models.PositiveIntegerField()),
-                profit=(F('cost') - F('prime_cost')) * Sum('orders_with_item__amount', filter=item_order_relationship, output_field=django_models.PositiveIntegerField()),
-                sold_count=Sum('orders_with_item__amount', filter=item_order_relationship)
+            items = api_models.Item.objects.annotate(
+                proceed=F('cost') * Sum('orders_with_item__amount', filter=Q(orders_with_item__order__paid=True), output_field=django_models.PositiveIntegerField()),
+                profit=(F('cost') - F('prime_cost')) * Sum('orders_with_item__amount', filter=Q(orders_with_item__order__paid=True), output_field=django_models.PositiveIntegerField()),
+                sold_count=Sum('orders_with_item__amount', filter=Q(orders_with_item__order__paid=True))
             )
+            list(items)
+            return items
         return api_models.Item.objects.all()
 
     def get_serializer_class(self):
@@ -50,7 +50,8 @@ class ItemViewSet(viewsets.ModelViewSet):
     @action(methods=['GET'], detail=False)
     def statistics(self, *args, **kwargs):
         serializer = self.get_serializer(self.get_queryset(), many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return self.get_paginated_response(serializer.data)
+
 
 class OrderViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin, mixins.CreateModelMixin, mixins.DestroyModelMixin):
     queryset = api_models.Order.objects.all()
