@@ -1,6 +1,6 @@
 from django import forms
 from django.shortcuts import get_object_or_404
-from rest_framework import viewsets, mixins
+from rest_framework import viewsets, mixins, pagination
 
 from api import serializer as api_serializers
 from api import models as api_models
@@ -20,6 +20,7 @@ class TopUpBalanceViewSet(viewsets.GenericViewSet, mixins.UpdateModelMixin, mixi
 class ItemViewSet(viewsets.ModelViewSet):
     serializer_class = api_serializers.ItemSerializer
     queryset = api_models.Item.objects.all()
+    pagination_class = pagination.LimitOffsetPagination
 
     def get_object(self):
         validator = forms.IntegerField()
