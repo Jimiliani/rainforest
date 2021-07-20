@@ -2,3 +2,5 @@ venv
 store/venv
 .idea
 store/.idea
+store/static
+store/media

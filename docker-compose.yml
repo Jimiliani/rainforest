@@ -18,21 +18,19 @@ services:
 
   main:
     build:
-      context: store/
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: store/Dockerfile
     container_name: main
-    working_dir: /store/
+    working_dir: /main/
     restart: always
-
     volumes:
-      - store:/store
-    command: bash -c "python manage.py collectstatic --no-input && gunicorn store.wsgi:application --bind 0.0.0.0:8000 --workers=${GUNICORN_WORKERS_COUNT} --timeout=120 --log-level=debug"
+      - ./store:/main/
+    command: bash -c "python manage.py collectstatic --no-input && python manage.py runserver 0.0.0.0:8000"
     depends_on:
       - db
     ports:
-      - "8000:8000"
+      - "0.0.0.0:8000:8000"
     env_file:
       - .env
 volumes:
   db-data:
-  store:
