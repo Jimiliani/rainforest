@@ -1,4 +1,6 @@
+from django.db import transaction
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 from api import models as api_models
 
@@ -6,14 +8,12 @@ from user_backends import models as user_models
 
 
 class TopUpBalanceSerializer(serializers.ModelSerializer):
-    amount = serializers.IntegerField(min_value=0)
-
     class Meta:
         model = user_models.User
-        fields = ['id', 'amount']
+        fields = ['id', 'balance']
 
     def update(self, instance, validated_data):
-        instance.amount += validated_data.get('amount', instance.amount)
+        instance.balance += validated_data.get('balance', instance.balance)
         instance.save()
         return instance
 
@@ -46,11 +46,11 @@ class ItemSerializer(serializers.ModelSerializer):
 
 class ItemInOrderRelationshipSerializer(serializers.ModelSerializer):
     item = serializers.PrimaryKeyRelatedField(queryset=api_models.Item.objects.all())
-    owner = serializers.PrimaryKeyRelatedField(queryset=user_models.User.objects.all())
+    order = serializers.PrimaryKeyRelatedField(queryset=api_models.Order.objects.all())
 
     class Meta:
         model = api_models.ItemInOrderRelationship
-        fields = ['id', 'item', 'owner', 'amount']
+        fields = ['id', 'item', 'order', 'amount']
 
 
 class ItemInOrderRelationshipReadOnlySerializer(serializers.ModelSerializer):
@@ -63,18 +63,43 @@ class ItemInOrderRelationshipReadOnlySerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     owner = serializers.PrimaryKeyRelatedField(queryset=user_models.User.objects.all())
-    items = ItemInOrderRelationshipReadOnlySerializer(read_only=True, many=True)
+    items_in_order = ItemInOrderRelationshipReadOnlySerializer(read_only=True, many=True)
 
     class Meta:
         model = api_models.Order
-        fields = ['id', 'owner', 'items']
+        fields = ['id', 'owner', 'items_in_order']
+
+
+class OrderCreationItemsSerializer(serializers.ModelSerializer):
+    item = serializers.PrimaryKeyRelatedField(queryset=api_models.Item.objects.all())
+
+    class Meta:
+        model = api_models.ItemInOrderRelationship
+        fields = ['item', 'amount']
 
     def create(self, validated_data):
-        items = validated_data.pop('items', [])
+        pass
+
+class CreateOrderSerializer(serializers.ModelSerializer):
+    owner = serializers.PrimaryKeyRelatedField(queryset=user_models.User.objects.all())
+    items_in_order = OrderCreationItemsSerializer(many=True)
+
+    class Meta:
+        model = api_models.Order
+        fields = ['id', 'owner', 'items_in_order']
+
+    def create(self, validated_data):
+        items = validated_data.pop('items_in_order', [])
         instance = api_models.Order.objects.create(**validated_data)
         items_ = [api_models.ItemInOrderRelationship(**item, order=instance) for item in items]
-        api_models.ItemInOrderRelationship.objects.bulk_create(items_)
-        return instance
+        try:
+            with transaction.atomic():
+                for item in items_:
+                    item.save()  # not using bulk_create because save method won't be called
+        except ValidationError as e:
+            instance.delete()
+            raise e
+        return instance or None
 
 
 class ItemStatisticsSerializer(serializers.ModelSerializer):
