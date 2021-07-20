@@ -1,5 +1,5 @@
 from django.db import models, transaction
-from django.db.models import Sum
+from django.db.models import Sum, F
 from rest_framework.exceptions import ValidationError
 
 from api.validators import validate_min_amount_of_items_in_orders
@@ -21,6 +21,11 @@ class Order(models.Model):
     items = models.ManyToManyField(Item, null=True, through="ItemInOrderRelationship", related_name='orders')
     paid = models.BooleanField(default=False)
     sold_for = models.PositiveIntegerField(null=True)
+
+    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
+        if not self.pk and Order.objects.filter(paid=False, owner=self.owner).exists():
+            raise ValidationError(detail="This user already has not paid order")
+        return super(Order, self).save(force_insert, force_update, using, update_fields)
 
     def pay(self, user):
         total_price = self.total_price
@@ -47,7 +52,9 @@ class Order(models.Model):
 
     @property
     def total_price(self):
-        return self.items.all().aggregate(total_price=Sum('cost')).only('total_price').total_price
+        return ItemInOrderRelationship.objects.filter(order=self).aggregate(
+            total_price=Sum(F('item__cost') * F('amount'), output_field=models.IntegerField())
+        ).get('total_price', 0)
 
 
 class ItemInOrderRelationship(models.Model):
@@ -76,6 +83,8 @@ class ItemInOrderRelationship(models.Model):
         if self.order.paid:
             raise ValidationError("Unable to change paid order")
         if not self.pk:
+            if self.order.items_in_order.filter(item=self.item).exists():
+                raise ValidationError("Item '{item}' already in order".format(item=str(self.item)))
             return self.book_items(self.item, force_insert, force_update, using, update_fields)
         return super(ItemInOrderRelationship, self).save(force_insert, force_update, using, update_fields)
 

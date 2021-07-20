@@ -31,9 +31,14 @@ class ItemViewSet(viewsets.ModelViewSet):
 
 
 class OrderViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin, mixins.CreateModelMixin, mixins.DestroyModelMixin):
-    serializer_class = api_serializers.OrderSerializer
     queryset = api_models.Order.objects.all()
     pagination_class = pagination.LimitOffsetPagination
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return api_serializers.CreateOrderSerializer
+        elif self.action not in ['pay', 'return_order']:
+            return api_serializers.OrderSerializer
 
     def get_object(self):
         validator = forms.IntegerField()
@@ -41,19 +46,19 @@ class OrderViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin, mixins.Cr
         return get_object_or_404(api_models.Order, pk=pk)
 
     @action(methods=['POST'], detail=True)
-    def pay(self):
+    def pay(self, *args, **kwargs):
         instance = self.get_object()
         instance.pay(instance.owner)
         return Response(status=status.HTTP_200_OK)
 
     @action(methods=['POST'], detail=True, url_path='return')
-    def return_order(self):
+    def return_order(self, *args, **kwargs):
         instance = self.get_object()
         instance.return_order(instance.owner)
         return Response(status=status.HTTP_200_OK)
 
 
-class ItemInOrderRelationshipViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin, mixins.DestroyModelMixin):
+class ItemInOrderRelationshipViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin, mixins.DestroyModelMixin, mixins.UpdateModelMixin):
     serializer_class = api_serializers.ItemInOrderRelationshipSerializer
     queryset = api_models.ItemInOrderRelationship.objects.all()
 
@@ -61,3 +66,4 @@ class ItemInOrderRelationshipViewSet(viewsets.GenericViewSet, mixins.CreateModel
         validator = forms.IntegerField()
         pk = validator.to_python(self.kwargs.get('pk', 0))
         return get_object_or_404(api_models.ItemInOrderRelationship, pk=pk)
+
