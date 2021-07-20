@@ -1,11 +1,11 @@
 from django import forms
 from django.shortcuts import get_object_or_404
-from rest_framework import viewsets, pagination
+from rest_framework import viewsets, pagination, mixins
 from user_backends import serializers as user_serializers
 from user_backends import models as user_models
 
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin):
     serializer_class = user_serializers.UserSerializer
     queryset = user_models.User.objects.all()
     pagination_class = pagination.LimitOffsetPagination

@@ -7,22 +7,23 @@ from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from rest_framework import permissions
 
-schema_view = get_schema_view(
-    openapi.Info(
-        title="Drones API",
-        default_version='v1',
-        description="Drones documentation",
-    ),
-    url='http://127.0.0.1/api',
-    public=True,
-    permission_classes=(permissions.AllowAny,),
-)
-
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),
 ]
+
+
+schema_view = get_schema_view(
+    openapi.Info(
+        title="Rainforest store API",
+        default_version='v1',
+        description="Rainforest store documentation",
+    ),
+    public=True,
+    permission_classes=(permissions.AllowAny,),
+    patterns=urlpatterns
+)
 
 
 urlpatterns += [
