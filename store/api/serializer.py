@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-import models as api_models
+from api import models as api_models
 
 from user_backends import models as user_models
 
@@ -10,7 +10,7 @@ class TopUpBalanceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = user_models.User
-        fields = ['amount', ]
+        fields = ['id', 'amount']
 
     def update(self, instance, validated_data):
         instance.amount += validated_data.get('amount', instance.amount)
@@ -40,7 +40,7 @@ class ItemMassActionsSerializer(serializers.ListSerializer):
 class ItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = api_models.Item
-        fields = ['name', 'prime_cost', 'cost', 'amount']
+        fields = ['id', 'name', 'prime_cost', 'cost', 'amount']
         list_serializer_class = ItemMassActionsSerializer
 
 

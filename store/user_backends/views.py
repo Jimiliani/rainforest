@@ -1,8 +1,8 @@
 from django import forms
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, pagination
-import serializers as user_serializers
-import models as user_models
+from user_backends import serializers as user_serializers
+from user_backends import models as user_models
 
 
 class UserViewSet(viewsets.ModelViewSet):

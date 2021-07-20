@@ -9,7 +9,7 @@ from api import models as api_models
 from user_backends import models as user_models
 
 
-class TopUpBalanceViewSet(viewsets.GenericViewSet, mixins.UpdateModelMixin, mixins.ListModelMixin):
+class TopUpBalanceViewSet(viewsets.GenericViewSet, mixins.UpdateModelMixin):
     serializer_class = api_serializers.TopUpBalanceSerializer
     queryset = user_models.User.objects.all()
 
