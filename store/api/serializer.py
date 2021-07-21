@@ -1,4 +1,4 @@
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
@@ -70,36 +70,38 @@ class OrderSerializer(serializers.ModelSerializer):
         fields = ['id', 'owner', 'items_in_order']
 
 
-class OrderCreationItemsSerializer(serializers.ModelSerializer):
-    item = serializers.PrimaryKeyRelatedField(queryset=api_models.Item.objects.all())
-
-    class Meta:
-        model = api_models.ItemInOrderRelationship
-        fields = ['item', 'amount']
-
-    def create(self, validated_data):
-        pass
-
 class CreateOrderSerializer(serializers.ModelSerializer):
     owner = serializers.PrimaryKeyRelatedField(queryset=user_models.User.objects.all())
-    items_in_order = OrderCreationItemsSerializer(many=True)
 
     class Meta:
         model = api_models.Order
-        fields = ['id', 'owner', 'items_in_order']
+        fields = ['id', 'owner']
 
     def create(self, validated_data):
-        items = validated_data.pop('items_in_order', [])
-        instance = api_models.Order.objects.create(**validated_data)
-        items_ = [api_models.ItemInOrderRelationship(**item, order=instance) for item in items]
+        items_in_order = self.initial_data.get('items_in_order', [])
         try:
             with transaction.atomic():
-                for item in items_:
-                    item.save()  # not using bulk_create because save method won't be called
-        except ValidationError as e:
-            instance.delete()
-            raise e
-        return instance or None
+                order = api_models.Order.objects.create(**validated_data)
+
+                not_created_items_relations = [
+                    api_models.ItemInOrderRelationship(
+                        item_id=item['item'], amount=item['amount'], order=order
+                    ) for item in items_in_order
+                ]
+                created_items_relations = api_models.ItemInOrderRelationship.objects.bulk_create(
+                    not_created_items_relations)
+
+                item_id_to_amount_converter = dict(
+                    map(lambda item: (item.item_id, item.amount), created_items_relations))
+
+                items = list(order.items.only('id', 'amount').all())
+                for item in items:
+                    item.amount -= item_id_to_amount_converter[item.id]
+                api_models.Item.objects.bulk_update(items, fields=['amount'])
+        except IntegrityError:
+            raise ValidationError("Not enough items for creating order")
+
+        return order
 
 
 class ItemStatisticsSerializer(serializers.ModelSerializer):

@@ -13,4 +13,5 @@ class CustomLimitOffsetPagination(LimitOffsetPagination):
 
     def get_count(self, queryset):
         # used only for generating previous and next pages
+        # can be fixed in real world
         return 100000000
