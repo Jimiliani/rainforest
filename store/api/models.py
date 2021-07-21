@@ -37,7 +37,7 @@ class Order(models.Model):
                 user.balance -= total_price
                 user.save()
                 self.sold_for = total_price
-                self.sold_at = now
+                self.sold_at = now()
                 self.paid = True
                 self.save()
         else:
@@ -47,11 +47,12 @@ class Order(models.Model):
         if not self.paid:
             raise ValidationError(detail="Order is not paid yet.")
         item_ids = self.items.values_list('id', flat=True)
+        amount_subquery = ItemInOrderRelationship.objects.filter(order=self, item_id=OuterRef('id')).values('amount')[:1]
         with transaction.atomic():
             user.balance += self.sold_for
             user.save()
             Item.objects.filter(id__in=item_ids).update(
-                returned_amount=F('returned_amount') + self.items_in_order.filter(order=self, item_id=OuterRef('id'))
+                returned_amount=F('returned_amount') + amount_subquery
             )
             self.delete()
 
