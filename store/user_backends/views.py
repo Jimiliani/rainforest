@@ -8,7 +8,6 @@ from user_backends import models as user_models
 class UserViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin):
     serializer_class = user_serializers.UserSerializer
     queryset = user_models.User.objects.all()
-    pagination_class = pagination.LimitOffsetPagination
 
     def get_object(self):
         validator = forms.IntegerField()

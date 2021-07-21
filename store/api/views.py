@@ -24,18 +24,15 @@ class TopUpBalanceViewSet(viewsets.GenericViewSet, mixins.UpdateModelMixin):
 
 class ItemViewSet(viewsets.ModelViewSet):
     serializer_class = api_serializers.ItemSerializer
-    pagination_class = pagination.LimitOffsetPagination
     filterset_class = filters.ItemsStatisticsFilter
 
     def get_queryset(self):
         if self.action == 'statistics':
-            item_order_relationship = api_models.ItemInOrderRelationship.objects.filter(order__paid=True)
             items = api_models.Item.objects.annotate(
                 proceed=F('cost') * Sum('orders_with_item__amount', filter=Q(orders_with_item__order__paid=True), output_field=django_models.PositiveIntegerField()),
                 profit=(F('cost') - F('prime_cost')) * Sum('orders_with_item__amount', filter=Q(orders_with_item__order__paid=True), output_field=django_models.PositiveIntegerField()),
                 sold_count=Sum('orders_with_item__amount', filter=Q(orders_with_item__order__paid=True))
-            )
-            list(items)
+            ).only('id', 'name', 'returned_amount')
             return items
         return api_models.Item.objects.all()
 
@@ -57,7 +54,6 @@ class ItemViewSet(viewsets.ModelViewSet):
 
 class OrderViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin, mixins.CreateModelMixin, mixins.DestroyModelMixin):
     queryset = api_models.Order.objects.all()
-    pagination_class = pagination.LimitOffsetPagination
 
     def get_serializer_class(self):
         if self.action == 'create':
