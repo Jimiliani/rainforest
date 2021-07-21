@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     'drf_yasg',
     'rest_framework',
     'silk',
+    'django_filters'
 ]
 
 MIDDLEWARE = [
@@ -36,6 +37,12 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'store.urls'
+
+REST_FRAMEWORK = {
+    'DEFAULT_FILTER_BACKENDS': (
+        'django_filters.rest_framework.DjangoFilterBackend',
+    ),
+}
 
 TEMPLATES = [
     {

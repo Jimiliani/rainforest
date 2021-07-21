@@ -25,7 +25,7 @@ class TopUpBalanceViewSet(viewsets.GenericViewSet, mixins.UpdateModelMixin):
 class ItemViewSet(viewsets.ModelViewSet):
     serializer_class = api_serializers.ItemSerializer
     pagination_class = pagination.LimitOffsetPagination
-    filter_class = filters.ItemsStatisticsFilter
+    filterset_class = filters.ItemsStatisticsFilter
 
     def get_queryset(self):
         if self.action == 'statistics':
@@ -51,7 +51,7 @@ class ItemViewSet(viewsets.ModelViewSet):
 
     @action(methods=['GET'], detail=False)
     def statistics(self, *args, **kwargs):
-        serializer = self.get_serializer(self.filter_queryset(self.get_queryset()), many=True)
+        serializer = self.get_serializer(self.paginate_queryset(self.filter_queryset(self.get_queryset())), many=True)
         return self.get_paginated_response(serializer.data)
 
 
